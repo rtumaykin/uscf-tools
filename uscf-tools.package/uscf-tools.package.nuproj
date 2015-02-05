@@ -1,0 +1,41 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|AnyCPU">
+      <Configuration>Debug</Configuration>
+      <Platform>AnyCPU</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|AnyCPU">
+      <Configuration>Release</Configuration>
+      <Platform>AnyCPU</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>0d71d3a5-d178-414e-a749-777d378c9c06</ProjectGuid>
+  </PropertyGroup>
+  <PropertyGroup>
+    <NuProjPath Condition=" '$(NuProjPath)' == '' ">$(MSBuildExtensionsPath)\NuProj\</NuProjPath>
+  </PropertyGroup>
+  <Import Project="$(NuProjPath)\NuProj.props" Condition="Exists('$(NuProjPath)\NuProj.props')" />
+  <PropertyGroup Label="Configuration">
+    <Id>uscf_tools</Id>
+    <Version>1.0.0</Version>
+    <Title>USCF Tools</Title>
+    <Authors>Roman Tumaykin</Authors>
+    <Owners>Roman Tumaykin</Owners>
+    <Summary>Toolset that allows to retrieve information fromthe USCF website in a structured way</Summary>
+    <Description>US Chess Federation does not have a good way of exposing its data as a set of public APIs. All it has is a very outdated set of PHP forms that serve data as HTML. This set of tools parse that html and present data in a way that most of the applications can consume.</Description>
+    <ReleaseNotes>This library heavily depends on the layout of USCF webpages return data. If they change it, then this whole thing won't work. I recomment not to use it for production projects.</ReleaseNotes>
+    <ProjectUrl>https://github.com/rtumaykin/uscf-tools</ProjectUrl>
+    <LicenseUrl>http://www.apache.org/licenses/LICENSE-2.0</LicenseUrl>
+    <Copyright>Copyright © 2015 Roman Tumaykin</Copyright>
+    <Tags>USCF,API,CHESS</Tags>
+  </PropertyGroup>
+  <ItemGroup>
+    <Content Include="Readme.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\uscf-tools\uscf-tools.csproj" />
+  </ItemGroup>
+  <Import Project="$(NuProjPath)\NuProj.targets" />
+</Project>
