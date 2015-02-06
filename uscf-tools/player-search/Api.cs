@@ -1,15 +1,19 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using uscf_tools.player_search.dto;
 using uscf_tools.player_search.models;
 
 [assembly: InternalsVisibleTo("uscf-tools.tests")]
 namespace uscf_tools.player_search
 {
-    public static class Api
+    /// <summary>
+    /// Encapsulates methods used for searching for a player
+    /// </summary>
+    public class Api
     {
+
         internal class FullName
         {
             public string FirstName { get; set; }
@@ -21,14 +25,14 @@ namespace uscf_tools.player_search
         // Go to the mobile api and run search eigther by the name/state, or by id.
         // if the name has more than 2 parts, then use desktop search using the id in question.
         // Desktop site returns the names in the form last name, first name, so it is easy to reconstruct the original first and last name
-        public static IEnumerable<UscfSearchRecord> SearchByName(SearchByNameRequest searchByNameRequest)
+        public IEnumerable<UscfSearchRecord> SearchByName(SearchByNameRequest searchByNameRequest)
         {
             var mobileApiResult = MobileApi.SearchByName(searchByNameRequest).ToList();
 
             return ProcessSearchResults(mobileApiResult);
         }
 
-        public static UscfMember LookupById(LookupByIdRequest lookupByIdRequest)
+        public UscfMember LookupById(LookupByIdRequest lookupByIdRequest)
         {
             var lookupResult = MobileApi.LookupById(lookupByIdRequest);
 
@@ -54,8 +58,19 @@ namespace uscf_tools.player_search
                 };
         }
 
+        protected virtual IEnumerable<LocalNameResolutionResponse> ResolveNamesLocally(
+            LocalNameResolutionRequest[] localNameResolutionRequests)
+        {
+            return null;
+        }
 
-        private static IEnumerable<UscfSearchRecord> ProcessSearchResults(List<MobileApiResult> mobileApiResult)
+        protected virtual void UpdateLocalNameResolutionData(LocalNameResolutionUpdateRequest[] data)
+        {
+            
+        }
+
+
+        private IEnumerable<UscfSearchRecord> ProcessSearchResults(List<MobileApiResult> mobileApiResult)
         {
             var searchResult = (from apiResult in mobileApiResult
                 let parsedName = ParseName_FirstPass(apiResult.FullName)
@@ -77,14 +92,52 @@ namespace uscf_tools.player_search
                     Comments = apiResult.Comments
                 }).ToList();
 
-            var resolvedIds = string.Join(",",
-                (searchResult.Select(result => result.UscfId.ToString(CultureInfo.InvariantCulture))));
+            var resolvedIds = searchResult.Select(result => result.UscfId).ToArray();
 
+            var unresolvedNames = (from item in mobileApiResult
+                where !resolvedIds.Contains(item.UscfId)
+                select new LocalNameResolutionRequest
+                {
+                    UscfId = item.UscfId, UscfFullName = item.FullName
+                }).ToArray();
 
-            var unparsedNamePlayerIds =
-                mobileApiResult.Where(
-                    item => !resolvedIds.Contains(item.UscfId.ToString(CultureInfo.InvariantCulture)))
-                    .Select(item => new LookupByIdRequest {UscfId = item.UscfId}).ToArray();
+            var localNameResolutionResults = ResolveNamesLocally(unresolvedNames);
+
+            if (localNameResolutionResults != null)
+            {
+                searchResult.AddRange(from row in localNameResolutionResults
+                    let unresolvedRecord = mobileApiResult.FirstOrDefault(item => item.UscfId == row.UscfId)
+                    select new UscfSearchRecord
+                    {
+                        UscfId = row.UscfId,
+                        FirstName = row.FirstName,
+                        LastName = row.LastName,
+                        Suffix = row.Suffix,
+                        StateOrCountry = unresolvedRecord.StateOrCountry,
+                        MembershipStatus = unresolvedRecord.MembershipStatus,
+                        MembershipExpirationDate = unresolvedRecord.MembershipExpirationDate,
+                        RatingStatus =
+                            unresolvedRecord.RegularRating == null
+                                ? RatingStatus.Unrated
+                                : unresolvedRecord.RegularRating.Status,
+                        Rating = unresolvedRecord.RegularRating == null ? 0 : unresolvedRecord.RegularRating.Value,
+                        ProvisionalRatingGamesCount =
+                            unresolvedRecord.RegularRating == null
+                                ? 0
+                                : unresolvedRecord.RegularRating.GamesCount ?? 0,
+                        Comments = unresolvedRecord.Comments
+                    });
+
+                resolvedIds = searchResult.Select(result => result.UscfId).ToArray();
+            }
+
+            var unparsedNamePlayerIds = (from item in mobileApiResult
+                                   where !resolvedIds.Contains(item.UscfId)
+                                         select new LookupByIdRequest
+                                   {
+                                       UscfId = item.UscfId
+                                   }).ToArray();
+
             if (unparsedNamePlayerIds.Length > 0)
             {
                 var desktopResult = DesktopApi.LookupByIds(unparsedNamePlayerIds);
@@ -116,6 +169,23 @@ namespace uscf_tools.player_search
                         Comments = unresolvedRecord.Comments
                     });
             }
+
+            var recordsToSave = new List<LocalNameResolutionUpdateRequest>();
+            recordsToSave.AddRange(from searchResultItem in searchResult
+                                   let originalItem = mobileApiResult.FirstOrDefault(item => item.UscfId == searchResultItem.UscfId)
+                                   select new LocalNameResolutionUpdateRequest
+                                   {
+                                       FirstName = searchResultItem.FirstName,
+                                       LastName = searchResultItem.LastName,
+                                       StateOrCountry = searchResultItem.StateOrCountry,
+                                       Suffix = searchResultItem.Suffix,
+                                       UscfId = searchResultItem.UscfId,
+                                       UscfFullName = originalItem.FullName
+                                   });
+
+            // save all resolved resords to cache
+            UpdateLocalNameResolutionData(recordsToSave.ToArray());
+            
             return searchResult;
         }
 

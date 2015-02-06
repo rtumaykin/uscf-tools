@@ -17,8 +17,9 @@ namespace uscf_tools.tests
                 LastName = "ivanov"
             };
 
-            var resultApi = Api.SearchByName(searchByNameRequest);
-            //var resultDesktop = rtumaykin.uscf_api.player_search.DesktopApi.SearchByName(searchByNameRequest);
+            var resultApi = new Api().SearchByName(searchByNameRequest);
+            //var resultDesktop = DesktopApi.SearchByName(searchByNameRequest);
+            var ss = resultApi;
         }
 
         [Test]
@@ -31,8 +32,68 @@ namespace uscf_tools.tests
             };
 
             //            var resultApi = UsChessApi.MobileApi.SearchByName(searchByNameRequest);
-            var result = Api.LookupById(lookupByIdRequest);
+            var result = new Api().LookupById(lookupByIdRequest);
+            var ss = result;
         }
         #endregion
+
+        [Test]
+        public void Should_Correctly_Parse_2_part_name()
+        {
+            const string twoPartName = "FIRSTNAME LASTNAME";
+            var parsedName = Api.ParseName_FirstPass(twoPartName);
+            Assert.IsNotNull(parsedName, "Parsed name should not be null");
+            Assert.That(parsedName.FirstName == "FIRSTNAME", "First name remained unparsed");
+            Assert.That(parsedName.LastName == "LASTNAME", "Last name remained unparsed");
+        }
+
+        [Test]
+        public void Should_Correctly_Parse_3_part_name_with_aid_of_full_site_result()
+        {
+            const string firstNameLastName = "FIRSTNAME MIDDLENAME LASTNAME";
+            const string lastNameFirstName = "LASTNAME,FIRSTNAME MIDDLENAME";
+
+            var parsedName = Api.ParseName_UsingReverseName(firstNameLastName, lastNameFirstName);
+            Assert.IsNotNull(parsedName, "Parsed name should not be null");
+            Assert.That(parsedName.FirstName == "FIRSTNAME MIDDLENAME", "First name remained unparsed");
+            Assert.That(parsedName.LastName == "LASTNAME", "Last name remained unparsed");
+        }
+
+        [Test]
+        public void Should_Correctly_Parse_3_part_name_with_aid_of_full_site_result_simple()
+        {
+            const string firstNameLastName = "FIRSTNAME     MIDDLENAME LASTNAME";
+            const string lastNameFirstName = "LASTNAME,FIRSTNAME     MIDDLENAME";
+
+            var parsedName = Api.ParseName_UsingReverseName(firstNameLastName, lastNameFirstName);
+            Assert.IsNotNull(parsedName, "Parsed name should not be null");
+            Assert.That(parsedName.FirstName == "FIRSTNAME MIDDLENAME", "First name remained unparsed");
+            Assert.That(parsedName.LastName == "LASTNAME", "Last name remained unparsed");
+        }
+
+        [Test]
+        public void Should_Correctly_Parse_3_part_name_with_aid_of_full_site_result_commas_inside()
+        {
+            const string firstNameLastName = "FIRST, NAME MIDDLENAME LAST , NAME";
+            const string lastNameFirstName = "LAST , NAME,FIRST, NAME MIDDLENAME";
+
+            var parsedName = Api.ParseName_UsingReverseName(firstNameLastName, lastNameFirstName);
+            Assert.IsNotNull(parsedName, "Parsed name should not be null");
+            Assert.That(parsedName.FirstName == "FIRST NAME MIDDLENAME", "First name remained unparsed");
+            Assert.That(parsedName.LastName == "LAST NAME", "Last name remained unparsed");
+        }
+
+        [Test]
+        public void Should_Correctly_Parse_3_part_name_with_aid_of_full_site_result_suffix()
+        {
+            const string firstNameLastName = "FIRST, NAME MIDDLENAME LAST , NAME JR";
+            const string lastNameFirstName = "LAST , NAME,FIRST, NAME MIDDLENAME, JR";
+
+            var parsedName = Api.ParseName_UsingReverseName(firstNameLastName, lastNameFirstName);
+            Assert.IsNotNull(parsedName, "Parsed name should not be null");
+            Assert.That(parsedName.FirstName == "FIRST NAME MIDDLENAME", "First name remained unparsed");
+            Assert.That(parsedName.LastName == "LAST NAME", "Last name remained unparsed");
+            Assert.That(parsedName.Suffix == "JR", "Suffix is unparsed");
+        }
     }
 }

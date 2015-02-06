@@ -54,6 +54,9 @@
     <Compile Include="Helpers.cs" />
     <Compile Include="player-search\Api.cs" />
     <Compile Include="player-search\DesktopApi.cs" />
+    <Compile Include="player-search\dto\LocalNameResolutionRequest.cs" />
+    <Compile Include="player-search\dto\LocalNameResolutionResponse.cs" />
+    <Compile Include="player-search\dto\LocalNameResolutionUpdateRequest.cs" />
     <Compile Include="player-search\MobileApi.cs" />
     <Compile Include="player-search\models\LookupByIdRequest.cs" />
     <Compile Include="player-search\models\MembershipStatus.cs" />
